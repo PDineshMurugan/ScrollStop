@@ -1,7 +1,7 @@
 # ScrollStop 📱🧘
 
-[![Direct Download APK](https://img.shields.io/badge/Direct_Download-APK_(v1.0.0)-22c55e?style=for-the-badge&logo=android&logoColor=white)](https://github.com/PDineshMurugan/scrollstop/releases/latest/download/scrollstop.apk)
-[![Platform](https://img.shields.io/badge/Platform-Android_8.0+_(API_26–35)-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
+[![Direct Download APK](https://img.shields.io/badge/Direct_Download-APK_(v1.0.0)-22c55e?style=for-the-badge&logo=android&logoColor=white)](https://github.com/PDineshMurugan/ScrollStop/raw/main/release/scrollstop.apk)
+[![Platform](https://img.shields.io/badge/Platform-Android_8.0+_(API_26--35)-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Privacy First](https://img.shields.io/badge/Privacy-100%25_Local_Processing-10B981?style=for-the-badge&logo=shield&logoColor=white)](#-privacy--security-manifesto)
@@ -13,14 +13,15 @@
 
 ## 📥 Direct Download APK (No Compilation Needed)
 
-| Artifact | Direct Link | File Size | Recommended For |
+| Artifact | Direct Link | File Size | Description |
 | :--- | :--- | :--- | :--- |
-| **Latest Release (v1.0.0)** | [⬇️ **Download `scrollstop.apk`**](https://github.com/PDineshMurugan/scrollstop/releases/latest/download/scrollstop.apk) | ~1.0 MB | Fast 1-tap download & install |
-| **Local Repository APK** | [📦 `release/scrollstop-v1.0.0.apk`](release/scrollstop-v1.0.0.apk) | ~1.0 MB | Direct install from cloned repo |
-| **All Releases & Notes** | [🏷️ **GitHub Releases Archive**](https://github.com/PDineshMurugan/scrollstop/releases) | — | Older builds & full changelogs |
+| **Direct APK Download** | [⬇️ **Download `scrollstop.apk`**](https://github.com/PDineshMurugan/ScrollStop/raw/main/release/scrollstop.apk) | ~1.0 MB | Instant 1-tap direct install from repo |
+| **Versioned Release APK** | [📦 **Download `scrollstop-v1.0.0.apk`**](https://github.com/PDineshMurugan/ScrollStop/raw/main/release/scrollstop-v1.0.0.apk) | ~1.0 MB | Direct install of v1.0.0 production build |
+| **Local Cloned Path** | [`release/scrollstop.apk`](release/scrollstop.apk) | ~1.0 MB | Local file if you cloned this repository |
+| **GitHub Releases Hub** | [🏷️ **GitHub Releases Archive**](https://github.com/PDineshMurugan/ScrollStop/releases) | — | Release tags, changelogs & release assets |
 
 > **Installation Quick-Start**:
-> 1. Download the APK file directly to your phone.
+> 1. Download the APK file directly to your phone using the button above.
 > 2. Tap the downloaded file in your browser or Files app.
 > 3. If prompted by Android, tap **"Settings"** ➔ **"Allow from this source"** ➔ **"Install"**.
 
@@ -142,10 +143,10 @@ ScrollStop is built on the philosophy of **complete data sovereignty**:
 
 Encountered an issue, false scroll count, or have an idea for a new feature? You can open tickets directly from inside the app under the **Community & Updates** section, or use the links below:
 
-- 🐛 **Report a Bug**: [Open Bug Report](https://github.com/PDineshMurugan/scrollstop/issues/new?template=bug_report.md&title=%5BBug%5D+)
-- 💡 **Request a Feature**: [Open Feature Request](https://github.com/PDineshMurugan/scrollstop/issues/new?template=feature_request.md&title=%5BFeature%5D+)
-- 🏷️ **GitHub Issues**: [Browse All Issues](https://github.com/PDineshMurugan/scrollstop/issues)
-- ⭐ **GitHub Repository**: [PDineshMurugan/scrollstop](https://github.com/PDineshMurugan/scrollstop)
+- 🐛 **Report a Bug**: [Open Bug Report](https://github.com/PDineshMurugan/ScrollStop/issues/new?template=bug_report.md&title=%5BBug%5D+)
+- 💡 **Request a Feature**: [Open Feature Request](https://github.com/PDineshMurugan/ScrollStop/issues/new?template=feature_request.md&title=%5BFeature%5D+)
+- 🏷️ **GitHub Issues**: [Browse All Issues](https://github.com/PDineshMurugan/ScrollStop/issues)
+- ⭐ **GitHub Repository**: [PDineshMurugan/ScrollStop](https://github.com/PDineshMurugan/ScrollStop)
 
 ---
 

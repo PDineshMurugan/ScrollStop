@@ -1,5 +1,6 @@
 # Built binaries and outputs
 *.apk
+!release/*.apk
 *.ap_
 *.aab
 *.dex

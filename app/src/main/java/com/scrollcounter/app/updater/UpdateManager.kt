@@ -36,7 +36,7 @@ sealed class UpdateStatus {
 object UpdateManager {
 
     const val GITHUB_OWNER = "PDineshMurugan"
-    const val GITHUB_REPO = "scrollstop"
+    const val GITHUB_REPO = "ScrollStop"
     const val GITHUB_REPO_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO"
     const val GITHUB_ISSUES_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/issues"
     const val GITHUB_BUG_REPORT_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/issues/new?template=bug_report.md&title=%5BBug%5D+"
