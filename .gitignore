@@ -1,0 +1,35 @@
+# Built binaries and outputs
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+build/
+app/build/
+.gradle/
+
+# Android Studio & IntelliJ IDEA
+*.iml
+.idea/
+.navigation/
+captures/
+output.json
+
+# Local SDK and keystore configuration
+local.properties
+*.jks
+*.keystore
+
+# VS Code
+.vscode/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Profiling and logs
+*.log

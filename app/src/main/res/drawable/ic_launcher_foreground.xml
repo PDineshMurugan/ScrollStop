@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer precision subtle ring -->
+    <path
+        android:strokeColor="#27272A"
+        android:strokeWidth="1.5"
+        android:pathData="M 54,27 A 27,27 0 1,1 53.9,27 Z" />
+
+    <!-- Upward scroll chevron (scroll indicator) -->
+    <path
+        android:strokeColor="#A1A1AA"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 44,36 L 54,30 L 64,36" />
+
+    <!-- Left Pause/Stop Pillar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 44,43 L 48,43 A 2,2 0 0,1 50,45 L 50,63 A 2,2 0 0,1 48,65 L 44,65 A 2,2 0 0,1 42,63 L 42,45 A 2,2 0 0,1 44,43 Z" />
+
+    <!-- Right Pause/Stop Pillar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 60,43 L 64,43 A 2,2 0 0,1 66,45 L 66,63 A 2,2 0 0,1 64,65 L 60,65 A 2,2 0 0,1 58,63 L 58,45 A 2,2 0 0,1 60,43 Z" />
+
+    <!-- Downward motion indicator -->
+    <path
+        android:strokeColor="#3F3F46"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 47,73 L 54,77 L 61,73" />
+
+    <!-- Center emerald active pulse dot -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M 54,54 A 2.2,2.2 0 1,1 53.9,54 Z" />
+
+</vector>

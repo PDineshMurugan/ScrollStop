@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="horizontal"
+    android:padding="4dp">
+
+    <!-- Instagram Reels Card -->
+    <LinearLayout
+        android:id="@+id/card_insta"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="2dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_stat_box"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingStart="4dp"
+        android:paddingTop="3dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="3dp">
+
+        <!-- Reels Badge with Instagram Gradient -->
+        <TextView
+            android:id="@+id/tv_badge_insta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_insta_badge"
+            android:includeFontPadding="false"
+            android:paddingStart="7dp"
+            android:paddingTop="1.5dp"
+            android:paddingEnd="7dp"
+            android:paddingBottom="1.5dp"
+            android:text="Reels"
+            android:textColor="#FFFFFF"
+            android:textSize="9.5sp"
+            android:textStyle="bold" />
+
+        <!-- Scroll Count Number -->
+        <TextView
+            android:id="@+id/tv_widget_insta_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:includeFontPadding="false"
+            android:text="0"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <!-- Active Time Spent -->
+        <TextView
+            android:id="@+id/tv_widget_insta_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:text="0m"
+            android:textColor="#94A3B8"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <!-- YouTube Shorts Card -->
+    <LinearLayout
+        android:id="@+id/card_yt"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="2dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_stat_box"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingStart="4dp"
+        android:paddingTop="3dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="3dp">
+
+        <!-- Shorts Badge with Iconic YouTube Red -->
+        <TextView
+            android:id="@+id/tv_badge_yt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_yt_badge"
+            android:includeFontPadding="false"
+            android:paddingStart="7dp"
+            android:paddingTop="1.5dp"
+            android:paddingEnd="7dp"
+            android:paddingBottom="1.5dp"
+            android:text="Shorts"
+            android:textColor="#FFFFFF"
+            android:textSize="9.5sp"
+            android:textStyle="bold" />
+
+        <!-- Scroll Count Number -->
+        <TextView
+            android:id="@+id/tv_widget_yt_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:includeFontPadding="false"
+            android:text="0"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <!-- Active Time Spent -->
+        <TextView
+            android:id="@+id/tv_widget_yt_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:text="0m"
+            android:textColor="#94A3B8"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+</LinearLayout>
