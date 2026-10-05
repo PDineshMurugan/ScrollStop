@@ -8,12 +8,35 @@ android {
     namespace = "com.scrollcounter.app"
     compileSdk = 35
 
+    val gitCommitCount: Int = try {
+        providers.exec {
+            commandLine("git", "rev-list", "--count", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.get().trim().toIntOrNull() ?: 1
+    } catch (_: Exception) {
+        1
+    }
+
+    val computedVersionCode: Int = if (project.hasProperty("versionCode")) {
+        project.property("versionCode").toString().toIntOrNull() ?: gitCommitCount
+    } else {
+        System.getenv("BUILD_NUMBER")?.toIntOrNull()
+            ?: System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+            ?: gitCommitCount
+    }
+
+    val computedVersionName: String = if (project.hasProperty("versionName")) {
+        project.property("versionName").toString()
+    } else {
+        "1.0.${maxOf(computedVersionCode, 1)}"
+    }
+
     defaultConfig {
         applicationId = "com.scrollcounter.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = maxOf(computedVersionCode, 1)
+        versionName = computedVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

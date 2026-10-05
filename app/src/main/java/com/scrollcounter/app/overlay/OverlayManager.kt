@@ -16,6 +16,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.FrameLayout
@@ -44,12 +45,18 @@ class OverlayManager(private val context: Context) {
         btnCloseIcon?.visibility = View.GONE
     }
 
-    // Touch dragging state
+    // Touch dragging & persistence state
+    private var savedX = dpToPx(20)
+    private var savedY = dpToPx(120)
     private var initialX = 0
     private var initialY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var touchStartTime = 0L
+    private var isDragging = false
+
+    private var lastPillColorState = -1
+    private var lastPlatform: TargetPlatform? = null
 
     companion object {
         const val TAG = "ScrollCounter"
@@ -104,12 +111,13 @@ class OverlayManager(private val context: Context) {
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
-                x = dpToPx(20)
-                y = dpToPx(100)
+                x = savedX
+                y = savedY
             }
 
             val rootFrameLayout = FrameLayout(context).apply {
@@ -135,7 +143,6 @@ class OverlayManager(private val context: Context) {
                 val bg = GradientDrawable().apply {
                     cornerRadius = dpToPx(6).toFloat()
                     if (platform == TargetPlatform.INSTAGRAM_REELS) {
-                        // Instagram gradient
                         orientation = GradientDrawable.Orientation.TL_BR
                         colors = intArrayOf(
                             Color.parseColor("#833AB4"),
@@ -143,13 +150,13 @@ class OverlayManager(private val context: Context) {
                             Color.parseColor("#FCB045")
                         )
                     } else {
-                        // YouTube Red
                         setColor(Color.parseColor("#FF0000"))
                     }
                 }
                 background = bg
             }
             tvPlatformBadge = badge
+            lastPlatform = platform
 
             // Live count & time text
             val countView = TextView(context).apply {
@@ -164,7 +171,6 @@ class OverlayManager(private val context: Context) {
             linearLayout.addView(badge)
             linearLayout.addView(countView)
 
-            // Pill layout params with small offset for top-right close icon
             val pillParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
@@ -173,26 +179,26 @@ class OverlayManager(private val context: Context) {
             }
             rootFrameLayout.addView(linearLayout, pillParams)
 
-            // Small on top-right close icon: HIDDEN by default!
+            // Small on top-right close icon: HIDDEN by default until pill is tapped
             val btnClose = TextView(context).apply {
                 text = "✕"
                 textSize = 9f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
-                visibility = View.GONE // Hidden initially until tag is clicked!
-                val size = dpToPx(18)
+                visibility = View.GONE
+                val size = dpToPx(20)
                 layoutParams = FrameLayout.LayoutParams(size, size).apply {
                     gravity = Gravity.TOP or Gravity.END
                 }
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.OVAL
-                    setColor(Color.parseColor("#EF4444")) // Vibrant red badge
+                    setColor(Color.parseColor("#EF4444"))
                     setStroke(dpToPx(1f), Color.WHITE)
                 }
                 elevation = dpToPx(10).toFloat()
                 setOnClickListener {
-                    Log.i(TAG, "Small top-right close icon clicked -> exiting app")
+                    Log.i(TAG, "Small top-right close icon clicked -> exiting")
                     hideCounter()
                     currentCloseAction?.invoke()
                 }
@@ -200,68 +206,72 @@ class OverlayManager(private val context: Context) {
             btnCloseIcon = btnClose
             rootFrameLayout.addView(btnClose)
 
-            var touchDownOnClose = false
+            val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
-            // Touch drag or tap-to-show-close behavior
+            // Butter-smooth touch drag and tap-to-show-close handler
             rootFrameLayout.setOnTouchListener { _, motionEvent ->
                 val params = counterParams ?: return@setOnTouchListener false
 
-                if (btnClose.visibility == View.VISIBLE) {
-                    val hitRect = Rect()
-                    btnClose.getHitRect(hitRect)
-                    hitRect.inset(-dpToPx(16), -dpToPx(16)) // Generous 16dp touch target
-                    if (motionEvent.action == MotionEvent.ACTION_DOWN && hitRect.contains(motionEvent.x.toInt(), motionEvent.y.toInt())) {
-                        touchDownOnClose = true
-                        return@setOnTouchListener true
-                    }
-                    if (touchDownOnClose && motionEvent.action == MotionEvent.ACTION_UP) {
-                        touchDownOnClose = false
-                        Log.i(TAG, "Close icon tapped -> exiting to home")
-                        hideCounter()
-                        currentCloseAction?.invoke()
-                        return@setOnTouchListener true
-                    }
-                }
-
-                when (motionEvent.action) {
+                when (motionEvent.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
-                        touchDownOnClose = false
                         initialX = params.x
                         initialY = params.y
                         initialTouchX = motionEvent.rawX
                         initialTouchY = motionEvent.rawY
                         touchStartTime = System.currentTimeMillis()
+                        isDragging = false
                         true
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        val displayMetrics = context.resources.displayMetrics
-                        val maxX = displayMetrics.widthPixels - dpToPx(80)
-                        val maxY = displayMetrics.heightPixels - dpToPx(60)
+                        val dx = motionEvent.rawX - initialTouchX
+                        val dy = motionEvent.rawY - initialTouchY
 
-                        params.x = (initialX + (motionEvent.rawX - initialTouchX).toInt()).coerceIn(0, maxX)
-                        params.y = (initialY + (motionEvent.rawY - initialTouchY).toInt()).coerceIn(dpToPx(30), maxY)
+                        if (!isDragging && hypot(dx, dy) > touchSlop) {
+                            isDragging = true
+                        }
 
-                        try {
-                            windowManager.updateViewLayout(rootFrameLayout, params)
-                        } catch (_: Exception) {}
+                        if (isDragging) {
+                            val displayMetrics = context.resources.displayMetrics
+                            val viewWidth = rootFrameLayout.width.takeIf { it > 0 } ?: dpToPx(130)
+                            val viewHeight = rootFrameLayout.height.takeIf { it > 0 } ?: dpToPx(44)
+                            val maxX = (displayMetrics.widthPixels - viewWidth).coerceAtLeast(0)
+                            val maxY = (displayMetrics.heightPixels - viewHeight).coerceAtLeast(0)
+
+                            val targetX = (initialX + dx.toInt()).coerceIn(0, maxX)
+                            val targetY = (initialY + dy.toInt()).coerceIn(dpToPx(25), maxY)
+
+                            if (targetX != params.x || targetY != params.y) {
+                                params.x = targetX
+                                params.y = targetY
+                                savedX = targetX
+                                savedY = targetY
+                                try {
+                                    windowManager.updateViewLayout(rootFrameLayout, params)
+                                } catch (_: Exception) {}
+                            }
+                        }
                         true
                     }
                     MotionEvent.ACTION_UP -> {
-                        val distance = hypot(motionEvent.rawX - initialTouchX, motionEvent.rawY - initialTouchY)
                         val duration = System.currentTimeMillis() - touchStartTime
+                        val distance = hypot(motionEvent.rawX - initialTouchX, motionEvent.rawY - initialTouchY)
 
-                        // Single tap (< 300ms, < 20px moved):
-                        // Reveals or hides the small top-right close icon!
-                        if (distance < 20f && duration < 300) {
+                        // If not dragged, treat as tap to reveal or hide the close 'X' button
+                        if (!isDragging && distance < touchSlop && duration < 350L) {
                             if (btnClose.visibility == View.VISIBLE) {
                                 btnClose.visibility = View.GONE
                                 mainHandler.removeCallbacks(autoHideCloseRunnable)
                             } else {
                                 btnClose.visibility = View.VISIBLE
                                 mainHandler.removeCallbacks(autoHideCloseRunnable)
-                                mainHandler.postDelayed(autoHideCloseRunnable, 8000L) // auto-hide after 8s
+                                mainHandler.postDelayed(autoHideCloseRunnable, 6000L)
                             }
                         }
+                        isDragging = false
+                        true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        isDragging = false
                         true
                     }
                     else -> false
@@ -276,25 +286,28 @@ class OverlayManager(private val context: Context) {
             }
         }
 
-        // Fast in-place updates
-        tvPlatformBadge?.text = platformName
+        // Fast in-place text updates
         tvCountText?.text = labelText
 
-        // Dynamic badge background styling
-        val badgeBg = GradientDrawable().apply {
-            cornerRadius = dpToPx(8).toFloat()
-            if (platform == TargetPlatform.INSTAGRAM_REELS) {
-                orientation = GradientDrawable.Orientation.TL_BR
-                colors = intArrayOf(
-                    Color.parseColor("#833AB4"),
-                    Color.parseColor("#FD1D1D"),
-                    Color.parseColor("#FCB045")
-                )
-            } else {
-                setColor(Color.parseColor("#FF0000"))
+        // In-place platform badge update (only if platform changed)
+        if (platform != lastPlatform) {
+            lastPlatform = platform
+            tvPlatformBadge?.text = platformName
+            val badgeBg = GradientDrawable().apply {
+                cornerRadius = dpToPx(6).toFloat()
+                if (platform == TargetPlatform.INSTAGRAM_REELS) {
+                    orientation = GradientDrawable.Orientation.TL_BR
+                    colors = intArrayOf(
+                        Color.parseColor("#833AB4"),
+                        Color.parseColor("#FD1D1D"),
+                        Color.parseColor("#FCB045")
+                    )
+                } else {
+                    setColor(Color.parseColor("#FF0000"))
+                }
             }
+            tvPlatformBadge?.background = badgeBg
         }
-        tvPlatformBadge?.background = badgeBg
 
         val ratio: Float = if (enforceLimits) {
             when (limitMode) {
@@ -305,16 +318,26 @@ class OverlayManager(private val context: Context) {
             0f
         }
 
-        val pillBg = GradientDrawable().apply {
-            cornerRadius = dpToPx(20).toFloat()
-            setStroke(dpToPx(1), Color.parseColor("#33FFFFFF"))
-            when {
-                ratio >= 1.0f -> setColor(Color.parseColor("#E6EF4444")) // Red
-                ratio >= 0.8f -> setColor(Color.parseColor("#E6F59E0B")) // Amber
-                else -> setColor(Color.parseColor("#E609090C")) // Pitch-dark frosted black
-            }
+        val colorState = when {
+            ratio >= 1.0f -> 2 // Red
+            ratio >= 0.8f -> 1 // Amber
+            else -> 0 // Pitch-dark frosted black
         }
-        pillContainer?.background = pillBg
+
+        // Only re-apply background when the limit state actually shifts (avoid layout thrash while dragging)
+        if (colorState != lastPillColorState && !isDragging) {
+            lastPillColorState = colorState
+            val pillBg = GradientDrawable().apply {
+                cornerRadius = dpToPx(20).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#33FFFFFF"))
+                when (colorState) {
+                    2 -> setColor(Color.parseColor("#E6EF4444"))
+                    1 -> setColor(Color.parseColor("#E6F59E0B"))
+                    else -> setColor(Color.parseColor("#E609090C"))
+                }
+            }
+            pillContainer?.background = pillBg
+        }
     }
 
     fun hideCounter() {

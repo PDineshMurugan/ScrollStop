@@ -46,6 +46,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import com.scrollcounter.app.data.DailyRecord
 import com.scrollcounter.app.data.LimitMode
 import com.scrollcounter.app.data.UserSettings
 import com.scrollcounter.app.service.ScrollAccessibilityService
@@ -349,6 +352,9 @@ fun MainScreen() {
 
             // --- Today's Hero Stats ---
             HeroMetricsGrid(settings = settings)
+
+            // --- Last 7 Days Weekly Activity Bar Chart ---
+            WeeklyAnalyticsCard(weeklyRecords = settings.weeklyRecords)
 
             // --- Mode Segmented Switch (Count vs Enforce) ---
             ModeSelector(
@@ -678,6 +684,282 @@ fun HeroMetricsGrid(settings: UserSettings) {
                 if (settings.limitMode == LimitMode.SCROLLS) "/ ${settings.youtubeScrollLimit}" else "/ ${settings.youtubeTimeLimitMinutes}m"
             } else ""
         )
+    }
+}
+
+enum class AnalyticsMetric {
+    SCROLLS,
+    MINUTES
+}
+
+@Composable
+fun WeeklyAnalyticsCard(weeklyRecords: List<DailyRecord>) {
+    var selectedMetric by remember { mutableStateOf(AnalyticsMetric.SCROLLS) }
+    var selectedIndex by remember(weeklyRecords) {
+        val todayIdx = weeklyRecords.indexOfFirst { it.isToday }.takeIf { it >= 0 } ?: (weeklyRecords.size - 1)
+        mutableStateOf(todayIdx.coerceAtLeast(0))
+    }
+
+    val totalScrolls = weeklyRecords.sumOf { it.totalCount }
+    val totalMinutes = weeklyRecords.sumOf { it.totalMinutes }
+    val avgPerDay = if (weeklyRecords.isNotEmpty()) {
+        if (selectedMetric == AnalyticsMetric.SCROLLS) totalScrolls / weeklyRecords.size
+        else totalMinutes / weeklyRecords.size
+    } else 0
+
+    val maxMetricValue = weeklyRecords.maxOfOrNull {
+        if (selectedMetric == AnalyticsMetric.SCROLLS) it.totalCount else it.totalMinutes
+    }?.coerceAtLeast(1) ?: 1
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceDark)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // Header with Metric Selector
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "LAST 7 DAYS ACTIVITY",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextTertiary,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = if (selectedMetric == AnalyticsMetric.SCROLLS) "$totalScrolls scrolls • Avg $avgPerDay/day" else "${totalMinutes}m total • Avg ${avgPerDay}m/day",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+
+            // Compact Metric toggle: Scrolls vs Minutes
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SurfaceCard)
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                    .padding(2.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (selectedMetric == AnalyticsMetric.SCROLLS) SurfaceCardSecondary else Color.Transparent)
+                        .clickable { selectedMetric = AnalyticsMetric.SCROLLS }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Scrolls",
+                        fontSize = 11.sp,
+                        fontWeight = if (selectedMetric == AnalyticsMetric.SCROLLS) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selectedMetric == AnalyticsMetric.SCROLLS) TextPrimary else TextSecondary
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (selectedMetric == AnalyticsMetric.MINUTES) SurfaceCardSecondary else Color.Transparent)
+                        .clickable { selectedMetric = AnalyticsMetric.MINUTES }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Time",
+                        fontSize = 11.sp,
+                        fontWeight = if (selectedMetric == AnalyticsMetric.MINUTES) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selectedMetric == AnalyticsMetric.MINUTES) TextPrimary else TextSecondary
+                    )
+                }
+            }
+        }
+
+        // Bar Chart area
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(130.dp)
+                .padding(top = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            weeklyRecords.forEachIndexed { index, record ->
+                val isSelected = index == selectedIndex
+                val value = if (selectedMetric == AnalyticsMetric.SCROLLS) record.totalCount else record.totalMinutes
+                val fillRatio = (value.toFloat() / maxMetricValue.toFloat()).coerceIn(0f, 1f)
+
+                val animatedRatio by animateFloatAsState(
+                    targetValue = fillRatio,
+                    animationSpec = tween(durationMillis = 400),
+                    label = "barHeight"
+                )
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable { selectedIndex = index },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    // Value label on top
+                    Text(
+                        text = if (value > 0) (if (selectedMetric == AnalyticsMetric.SCROLLS) "$value" else "${value}m") else "",
+                        fontSize = 10.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) TextPrimary else TextTertiary,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+
+                    // Vertical Bar Capsule
+                    Box(
+                        modifier = Modifier
+                            .width(24.dp)
+                            .height(84.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) SurfaceCardSecondary.copy(alpha = 0.8f) else SurfaceCard.copy(alpha = 0.6f)
+                            )
+                            .border(
+                                width = if (isSelected) 1.dp else 0.dp,
+                                color = if (isSelected) TextPrimary.copy(alpha = 0.5f) else Color.Transparent,
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        if (value > 0) {
+                            val instaPart = if (selectedMetric == AnalyticsMetric.SCROLLS) record.instagramCount else (record.instagramSeconds / 60)
+                            val ytPart = if (selectedMetric == AnalyticsMetric.SCROLLS) record.youtubeCount else (record.youtubeSeconds / 60)
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(animatedRatio.coerceAtLeast(0.08f))
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        when {
+                                            instaPart > 0 && ytPart > 0 -> Brush.verticalGradient(
+                                                listOf(YtColor, Color(0xFFFD1D1D), Color(0xFF833AB4))
+                                            )
+                                            ytPart > 0 -> Brush.verticalGradient(listOf(YtColor, Color(0xFFB91C1C)))
+                                            else -> Brush.verticalGradient(InstaGradient)
+                                        }
+                                    )
+                            )
+                        } else {
+                            // Empty day indicator (subtle 4dp dot)
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = 6.dp)
+                                    .size(4.dp)
+                                    .clip(CircleShape)
+                                    .background(TextTertiary.copy(alpha = 0.4f))
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Day of Week Label (e.g. "Mon")
+                    Text(
+                        text = record.dayLabel,
+                        fontSize = 11.sp,
+                        fontWeight = if (record.isToday || isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = when {
+                            record.isToday -> AccentGreen
+                            isSelected -> TextPrimary
+                            else -> TextSecondary
+                        }
+                    )
+
+                    // Dot for today
+                    if (record.isToday) {
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 2.dp)
+                                .size(3.dp)
+                                .clip(CircleShape)
+                                .background(AccentGreen)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(5.dp))
+                    }
+                }
+            }
+        }
+
+        // Selected Day Details Banner
+        val selectedRecord = weeklyRecords.getOrNull(selectedIndex)
+        if (selectedRecord != null) {
+            HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(SurfaceCard)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (selectedRecord.isToday) "Today (${selectedRecord.dayLabel})" else "${selectedRecord.dayLabel} (${selectedRecord.date})",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (selectedRecord.isToday) AccentGreen else TextPrimary
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Reels
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(InstaGradient))
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${selectedRecord.instagramCount} reels (${selectedRecord.instagramSeconds / 60}m)",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    // Shorts
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(YtColor)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${selectedRecord.youtubeCount} shorts (${selectedRecord.youtubeSeconds / 60}m)",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1127,21 +1409,74 @@ fun MissingPermissionsBanner(
             }
 
             // Quick App Info helper if restricted setting
+            var showRestrictedDialog by remember { mutableStateOf(false) }
+
+            if (showRestrictedDialog) {
+                AlertDialog(
+                    onDismissRequest = { showRestrictedDialog = false },
+                    containerColor = SurfaceCard,
+                    title = {
+                        Text(
+                            text = "Unblock 'Restricted setting'",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        )
+                    },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                text = "Android 13+ restricts accessibility for sideloaded apps. You can unlock it in 10 seconds:",
+                                color = TextSecondary,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = "1. Tap 'Open App Info' below.\n2. Tap the ⋮ (3 dots) in the top-right corner.\n3. Tap 'Allow restricted settings' and confirm.\n4. Return here and enable ScrollStop Service.",
+                                color = TextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showRestrictedDialog = false
+                                onOpenAppInfo()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = TextPrimary, contentColor = BgOled)
+                        ) {
+                            Text("Open App Info", fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showRestrictedDialog = false }) {
+                            Text("Got it", color = TextSecondary)
+                        }
+                    }
+                )
+            }
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SurfaceCardSecondary.copy(alpha = 0.6f))
+                    .clickable { showRestrictedDialog = true }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Button greyed out ('Restricted setting')?",
-                    fontSize = 11.sp,
-                    color = TextTertiary
+                    text = "Greyed out with 'Restricted setting'?",
+                    fontSize = 12.sp,
+                    color = AccentAmber
                 )
                 Text(
-                    text = "App Info ➔ ⋮ ➔ Allow",
-                    fontSize = 11.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.clickable { onOpenAppInfo() }
+                    text = "Fix guide ➔",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
                 )
             }
         }

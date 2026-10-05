@@ -60,17 +60,19 @@
 
 ---
 
-## 🔄 Versioning & In-App Auto-Updates
+## 🔄 Dynamic Versioning & In-App Auto-Updates
 
-ScrollStop includes native version management and an integrated update pipeline:
+ScrollStop includes native automated version management and an integrated update pipeline:
 
-1. **Version Tracking**: Clean semantic versioning declared in Gradle (`versionCode = 1`, `versionName = "1.0.0"`) and exposed via `BuildConfig`.
+1. **Dynamic Version Tracking**:
+   - Versioning is automatically derived in Gradle based on Git commits and GitHub Actions builds (`versionName = "1.0.<commit_count>"` and `versionCode = <commit_count>`).
+   - Every push to GitHub automatically increments the patch version (e.g. `v1.0.3`, `v1.0.4`, etc.), ensuring the app never stays stagnant at an initial version.
 2. **In-App Check for Updates**:
-   - The app checks `https://api.github.com/repos/PDineshMurugan/scrollstop/releases/latest` in the background on launch or when tapping **"Check for Updates"** in the app settings.
-   - When a new version is published on GitHub, a stylish green banner appears with release notes and a direct **"Download APK"** button.
+   - The app checks `https://api.github.com/repos/PDineshMurugan/ScrollStop/releases/latest` in the background on launch or when tapping **"Check for Updates"** in the app settings.
+   - When a newer version is published on GitHub, an update banner appears with release notes and a direct **"Download APK"** button.
 3. **Automated CI/CD Workflow**:
-   - The included GitHub Actions workflow (`.github/workflows/release.yml`) automatically triggers on git tag pushes (e.g. `v1.0.1`).
-   - Compiles and minifies with R8, signs the APK, and uploads `scrollstop.apk` and `scrollstop-v{version}.apk` directly to GitHub Releases.
+   - The included GitHub Actions workflow (`.github/workflows/release.yml`) automatically triggers on **every push to `main`** as well as on release tags (`v*`).
+   - Compiles and minifies with R8, creates a GitHub Release with the auto-incremented tag (`v1.0.<commit_count>`), and attaches `scrollstop.apk` and versioned APK assets.
 
 ---
 

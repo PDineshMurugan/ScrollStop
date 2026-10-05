@@ -146,8 +146,8 @@ object UpdateManager {
      */
     fun isNewerVersion(remote: String, current: String): Boolean {
         try {
-            val remoteParts = remote.split("-")[0].split(".").map { it.toIntOrNull() ?: 0 }
-            val currentParts = current.split("-")[0].split(".").map { it.toIntOrNull() ?: 0 }
+            val remoteParts = remote.split("-")[0].split("+")[0].split(".").map { it.toIntOrNull() ?: 0 }
+            val currentParts = current.split("-")[0].split("+")[0].split(".").map { it.toIntOrNull() ?: 0 }
 
             val maxLen = maxOf(remoteParts.size, currentParts.size)
             for (i in 0 until maxLen) {
