@@ -34,3 +34,5 @@ desktop.ini
 
 # Profiling and logs
 *.log
+.kotlin/
+
