@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Network permission strictly for checking GitHub releases & app updates -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Prevent background killing and deep sleep on Samsung / One UI devices -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <queries>
         <intent>

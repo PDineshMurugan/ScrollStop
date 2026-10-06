@@ -8,9 +8,6 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,10 +16,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lightbulb
@@ -32,7 +30,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.scrollcounter.app.BuildConfig
-import com.scrollcounter.app.updater.AppReleaseInfo
 import com.scrollcounter.app.updater.UpdateManager
 import com.scrollcounter.app.updater.UpdateStatus
 import kotlinx.coroutines.launch
@@ -42,12 +39,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import com.scrollcounter.app.data.DailyRecord
 import com.scrollcounter.app.data.LimitMode
 import com.scrollcounter.app.data.UserSettings
@@ -105,6 +99,7 @@ fun MainScreen() {
 
     var isAccessibilityEnabled by remember { mutableStateOf(checkAccessibilityPermission(context)) }
     var isOverlayEnabled by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var isBatteryIgnored by remember { mutableStateOf(checkBatteryOptimization(context)) }
     var showResetConfirm by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
@@ -121,6 +116,7 @@ fun MainScreen() {
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 isAccessibilityEnabled = checkAccessibilityPermission(context)
                 isOverlayEnabled = Settings.canDrawOverlays(context)
+                isBatteryIgnored = checkBatteryOptimization(context)
             }
         }
         val lifecycle = (context as ComponentActivity).lifecycle
@@ -301,6 +297,50 @@ fun MainScreen() {
                     onOpenOverlay = { openOverlaySettings(context) },
                     onOpenAppInfo = { openAppInfo(context) }
                 )
+            }
+
+            // --- Samsung / Android Battery Exemption (Only shown if optimized) ---
+            if (!isBatteryIgnored && isAccessibilityEnabled && isOverlayEnabled) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SurfaceDark)
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
+                        .clickable { requestBatteryOptimizationExemption(context) }
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Icon(
+                            imageVector = Icons.Default.Lightbulb,
+                            contentDescription = null,
+                            tint = AccentAmber,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Allow Unrestricted Battery",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Recommended on Samsung to prevent overnight sleep & missing counts",
+                                fontSize = 11.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Allow",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentAmber
+                    )
+                }
             }
 
             // --- Update Available Notification Banner ---
@@ -1535,4 +1575,26 @@ fun openAppInfo(context: Context) {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK
     }
     context.startActivity(intent)
+}
+
+fun checkBatteryOptimization(context: Context): Boolean {
+    val pm = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+    return pm?.isIgnoringBatteryOptimizations(context.packageName) ?: true
+}
+
+fun requestBatteryOptimizationExemption(context: Context) {
+    try {
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        try {
+            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {}
+    }
 }

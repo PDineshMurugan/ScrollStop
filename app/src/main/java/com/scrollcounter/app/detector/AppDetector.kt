@@ -36,17 +36,18 @@ class AppDetector {
         const val PACKAGE_INSTAGRAM = "com.instagram.android"
         const val PACKAGE_YOUTUBE = "com.google.android.youtube"
 
-        // Minimum time between distinct video signature transitions (240ms).
-        // Allows rapid swiping (up to 4 videos/sec) while completely eliminating duplicate
-        // events/flicker from the same swipe.
-        private const val MIN_DISTINCT_SIGNATURE_INTERVAL_MS = 240L
+        // Minimum time between distinct video signature transitions (280ms).
+        private const val MIN_DISTINCT_SIGNATURE_INTERVAL_MS = 280L
 
-        // Minimum interval between fallback (non-signature) scroll counts (500ms).
-        private const val MIN_FALLBACK_SCROLL_INTERVAL_MS = 500L
+        // Cooldown when gesture occurs on the same video (1200ms).
+        // Completely eliminates double-counting caused by fling and snap animations!
+        private const val SAME_VIDEO_SWIPE_COOLDOWN_MS = 1200L
 
-        // Grace period (850ms) to adopt a late-loading signature after an anonymous scroll
-        // without double counting.
-        private const val ANONYMOUS_ADOPTION_WINDOW_MS = 850L
+        // Cooldown between fallback (anonymous) scroll counts (700ms).
+        private const val ANONYMOUS_SCROLL_COOLDOWN_MS = 700L
+
+        // Grace period to adopt a late-loading signature after a scroll
+        private const val ANONYMOUS_ADOPTION_WINDOW_MS = 950L
     }
 
     fun analyzeEvent(event: AccessibilityEvent, rootNode: AccessibilityNodeInfo?): DetectionResult {
@@ -67,6 +68,16 @@ class AppDetector {
     // ==========================================
 
     fun isWaitingBaseline(): Boolean = isInstagramBaselinePending || isYouTubeBaselinePending
+
+    fun isInstagramReelsActive(rootNode: AccessibilityNodeInfo?): Boolean {
+        if (rootNode == null) return false
+        return scanInstagram(rootNode).isReels
+    }
+
+    fun isYouTubeShortsActive(rootNode: AccessibilityNodeInfo?): Boolean {
+        if (rootNode == null) return false
+        return scanYouTube(rootNode).isShorts
+    }
 
     private data class InstagramScan(
         val isReels: Boolean,
@@ -116,19 +127,31 @@ class AppDetector {
     private fun scanInstagram(rootNode: AccessibilityNodeInfo): InstagramScan {
         var isFeedTabSelected = false
         var isReelsTabSelected = false
+        var isSearchTabSelected = false
+        var isProfileTabSelected = false
         var hasClipsViewer = false
         var hasInboxList = false
-        var hasHomeFeedIndicator = false
         var isCommentsOrShareOpen = false
 
-        val candidates = mutableListOf<String>()
+        var authorFound: String? = null
+        var audioFound: String? = null
+        var captionFound: String? = null
 
         fun traverse(node: AccessibilityNodeInfo, depth: Int) {
-            if (depth > 25) return
+            if (depth > 16) return
 
             val resId = node.viewIdResourceName.orEmpty()
             val desc = node.contentDescription?.toString().orEmpty().trim()
             val text = node.text?.toString().orEmpty().trim()
+
+            // Skip irrelevant large subtrees early to save battery and binder calls
+            if (resId.contains("stories_tray", true) ||
+                resId.contains("feed_recycler", true) ||
+                resId.contains("thread_recycler", true)
+            ) {
+                if (resId.contains("thread_recycler", true)) hasInboxList = true
+                return
+            }
 
             // 1. Navigation bar tabs
             if (resId.contains("clips_tab", true) || desc.equals("Reels", true) || desc.contains("Reels", true) || text.equals("Reels", true)) {
@@ -143,16 +166,20 @@ class AppDetector {
                     if (node.getChild(c)?.isSelected == true) isFeedTabSelected = true
                 }
             }
-
-            // 2. Home Feed and Direct Messages Inbox detection (should NOT count as Reels)
-            if (resId.contains("title_logo", true) ||
-                desc.contains("Home Feed", true) ||
-                desc.contains("reels tray container", true) ||
-                resId.contains("reels_tray", true)
-            ) {
-                hasHomeFeedIndicator = true
+            if (resId.contains("search_tab", true) || desc.equals("Search and explore", true) || desc.equals("Search", true)) {
+                if (node.isSelected) isSearchTabSelected = true
+                for (c in 0 until node.childCount) {
+                    if (node.getChild(c)?.isSelected == true) isSearchTabSelected = true
+                }
+            }
+            if (resId.contains("profile_tab", true) || desc.equals("Profile", true)) {
+                if (node.isSelected) isProfileTabSelected = true
+                for (c in 0 until node.childCount) {
+                    if (node.getChild(c)?.isSelected == true) isProfileTabSelected = true
+                }
             }
 
+            // 2. Direct Messages Inbox detection
             if (resId.contains("inbox_refreshable", true) ||
                 resId.contains("direct_inbox", true) ||
                 resId.contains("direct_quick_snap", true)
@@ -167,7 +194,14 @@ class AppDetector {
                 resId.contains("clips_viewpager", true) ||
                 resId.contains("clips_swipe_refresh_layout", true) ||
                 resId.contains("reel_viewer", true) ||
-                resId.contains("unified_video_container", true)
+                resId.contains("unified_video_container", true) ||
+                resId.contains("clips_author", true) ||
+                resId.contains("clips_action_bar", true) ||
+                resId.contains("clips_like_button", true) ||
+                resId.contains("clips_comment_button", true) ||
+                resId.contains("clips_share_button", true) ||
+                desc.contains("Reel by ", true) ||
+                desc.contains("Like reel", true)
             ) {
                 hasClipsViewer = true
             }
@@ -182,37 +216,48 @@ class AppDetector {
                 resId.contains("direct_share_sheet", true)
             ) {
                 isCommentsOrShareOpen = true
+                return
             }
 
-            // 5. Collect video signature components (Author, Audio, Caption) - ONLY if not on Home Feed
-            if (!hasHomeFeedIndicator && candidates.size < 3) {
-                // Check "Reel by creator" accessibility description
-                if (desc.startsWith("Reel by ", ignoreCase = true)) {
-                    val creator = desc.substring(8).split(".")[0].trim()
-                    if (creator.isNotEmpty() && !candidates.contains(creator)) {
-                        candidates.add(creator)
+            // 5. Collect video signature components (Author, Audio, Caption)
+            if (authorFound == null) {
+                if (desc.startsWith("Reel by ", ignoreCase = true) || desc.contains("Reel by ", ignoreCase = true)) {
+                    val creator = if (desc.startsWith("Reel by ", ignoreCase = true)) {
+                        desc.substring(8).split(".")[0].trim()
+                    } else {
+                        desc.substringAfter("Reel by ").split(".")[0].trim()
                     }
-                }
-                // Check avatar content description (e.g., "altyboston profile picture", "dosakallu_ profile picture")
-                else if (desc.contains("profile picture", true)) {
+                    if (creator.isNotEmpty()) authorFound = creator
+                } else if (desc.contains("profile picture", true)) {
                     val authorName = desc.replace("profile picture", "", ignoreCase = true)
                         .replace("Profile picture of", "", ignoreCase = true)
                         .replace("'s", "", ignoreCase = true)
                         .trim()
-                    if (authorName.length in 2..40 && !authorName.contains(" ") && !candidates.contains(authorName)) {
-                        candidates.add(authorName)
+                    if (authorName.length in 2..40 && !authorName.contains(" ")) {
+                        authorFound = authorName
                     }
-                }
-                // Author view IDs (excluding home feed post profile names)
-                else if (resId.contains("clips_author", true) ||
+                } else if (resId.contains("clips_author", true) ||
                     resId.contains("clips_user_name", true) ||
                     resId.contains("author_name", true)
                 ) {
                     val key = text.ifEmpty { desc }
-                    if (key.isNotEmpty() && !candidates.contains(key)) candidates.add(key)
+                    if (key.isNotEmpty()) authorFound = key
                 }
-                // Audio track
-                else if (resId.contains("audio_title", true) ||
+            }
+
+            if (captionFound == null) {
+                if (resId.contains("clips_caption", true) ||
+                    resId.contains("caption_text_view", true)
+                ) {
+                    val key = text.ifEmpty { desc }
+                    if (key.length >= 3) {
+                        captionFound = key.take(30)
+                    }
+                }
+            }
+
+            if (audioFound == null) {
+                if (resId.contains("audio_title", true) ||
                     resId.contains("music_title", true) ||
                     resId.contains("audio_track", true) ||
                     desc.contains("Original audio", true) ||
@@ -221,18 +266,13 @@ class AppDetector {
                     text.contains("Audio by", true)
                 ) {
                     val key = text.ifEmpty { desc }
-                    if (key.isNotEmpty() && !candidates.contains(key)) candidates.add(key)
+                    if (key.isNotEmpty()) audioFound = key
                 }
-                // Caption
-                else if (resId.contains("clips_caption", true) ||
-                    resId.contains("caption_text_view", true)
-                ) {
-                    val key = text.ifEmpty { desc }
-                    if (key.length >= 4) {
-                        val snippet = key.take(35)
-                        if (!candidates.contains(snippet)) candidates.add(snippet)
-                    }
-                }
+            }
+
+            // Early exit once clips viewer and at least 2 distinct components are discovered
+            if (hasClipsViewer && authorFound != null && (captionFound != null || audioFound != null)) {
+                return
             }
 
             for (i in 0 until node.childCount) {
@@ -243,11 +283,17 @@ class AppDetector {
 
         traverse(rootNode, 0)
 
-        // Reels is active ONLY when NOT in Home feed or Direct inbox
-        val isReels = !hasHomeFeedIndicator && !hasInboxList && (
-            isReelsTabSelected || hasClipsViewer || (candidates.isNotEmpty() && !isFeedTabSelected)
-        )
-        val signature = if (candidates.isNotEmpty() && isReels) candidates.joinToString("::") else null
+        val isNonReelsSection = !hasClipsViewer && (isFeedTabSelected || isSearchTabSelected || isProfileTabSelected || hasInboxList)
+        val isReels = (hasClipsViewer || isReelsTabSelected) && !isNonReelsSection
+
+        val signature = when {
+            authorFound != null && captionFound != null -> "$authorFound::$captionFound"
+            authorFound != null && audioFound != null -> "$authorFound::$audioFound"
+            authorFound != null -> authorFound
+            captionFound != null -> captionFound
+            audioFound != null -> audioFound
+            else -> null
+        }
 
         return InstagramScan(isReels, isCommentsOrShareOpen, signature)
     }
@@ -316,7 +362,7 @@ class AppDetector {
         val nodeBounds = Rect()
 
         fun traverse(node: AccessibilityNodeInfo, depth: Int) {
-            if (depth > 20) return
+            if (depth > 14) return
 
             val resId = node.viewIdResourceName.orEmpty()
             val desc = node.contentDescription?.toString().orEmpty().trim()
@@ -349,14 +395,13 @@ class AppDetector {
 
             // 4. Comments panel open
             if (resId.contains("engagement_panel", true) ||
-                resId.contains("comment_composer", true) ||
-                resId.contains("comment_thread", true) ||
-                resId.contains("comments_header", true) ||
+                resId.contains("comment", true) ||
                 resId.contains("bottom_sheet_container", true) ||
                 resId.contains("panel_header", true) ||
                 resId.contains("description_panel", true)
             ) {
                 isCommentsOpen = true
+                return
             }
 
             // 5. Collect signature components (Channel, Title, Sound)
@@ -384,6 +429,10 @@ class AppDetector {
                         if (!candidates.contains(desc)) candidates.add(desc)
                     }
                 }
+            }
+
+            if (candidates.size >= 2 && (hasShortsContainer || isShortsTabSelected)) {
+                return
             }
 
             for (i in 0 until node.childCount) {
@@ -426,9 +475,8 @@ class AppDetector {
         // 1. Initial entry or baseline resolution (prevents phantom count jump on app open)
         if (getIsBaselinePending()) {
             if (signature != null) {
-                // Initial video's signature has loaded cleanly
                 setLastSignature(signature)
-                setLastCountTime(0L) // Set to 0 so the first user swipe is never blocked by debounce
+                setLastCountTime(0L) // Set to 0 so the first user swipe is never blocked
                 setIsBaselinePending(false)
                 Log.d(TAG, "[$platform] Initial baseline established: $signature (not counted)")
                 return DetectionResult(platform, isNewContentScrolled = false, currentSignature = signature)
@@ -442,54 +490,49 @@ class AppDetector {
                 Log.i(TAG, "[$platform] User scrolled before baseline -> count scroll")
                 return DetectionResult(platform, isNewContentScrolled = true, currentSignature = null)
             } else {
-                // Still waiting on initial video without user scrolling
                 return DetectionResult(platform, isNewContentScrolled = false, currentSignature = null)
             }
         }
 
-        // 2. We have a non-null signature for the current view
-        if (signature != null) {
-            // Check if we recently performed an anonymous scroll fallback that can now adopt this signature
-            if (getIsAnonymousPending() && (now - getLastAnonymousTime() < ANONYMOUS_ADOPTION_WINDOW_MS)) {
-                setLastSignature(signature)
-                setIsAnonymousPending(false)
-                Log.d(TAG, "[$platform] Adopted signature for recent anonymous scroll: $signature")
-                return DetectionResult(platform, isNewContentScrolled = false, currentSignature = signature)
-            }
+        // 2. Check if a recent anonymous scroll can now adopt this incoming signature
+        if (signature != null && getIsAnonymousPending() && (now - getLastAnonymousTime() < ANONYMOUS_ADOPTION_WINDOW_MS)) {
+            setLastSignature(signature)
+            setIsAnonymousPending(false)
+            Log.d(TAG, "[$platform] Adopted signature for recent anonymous scroll: $signature")
+            return DetectionResult(platform, isNewContentScrolled = false, currentSignature = signature)
+        }
 
-            // If signature is distinct from the previously counted video
-            if (signature != lastSig) {
-                val timeSinceLast = now - getLastCountTime()
-                if (timeSinceLast >= MIN_DISTINCT_SIGNATURE_INTERVAL_MS) {
-                    setLastSignature(signature)
-                    setLastCountTime(now)
-                    setIsAnonymousPending(false)
-                    Log.i(TAG, "[$platform] New video confirmed via signature change ($timeSinceLast ms): $signature")
-                    return DetectionResult(platform, isNewContentScrolled = true, currentSignature = signature)
-                } else {
-                    // Too fast (< 240ms debounce), do NOT overwrite lastSignature so subsequent event can count it
-                    return DetectionResult(platform, isNewContentScrolled = false, currentSignature = lastSig)
-                }
+        // 3. New video confirmed via signature change (distinct video content)
+        if (signature != null && signature != lastSig) {
+            val timeSinceLast = now - getLastCountTime()
+            if (timeSinceLast >= MIN_DISTINCT_SIGNATURE_INTERVAL_MS) {
+                setLastSignature(signature)
+                setLastCountTime(now)
+                setIsAnonymousPending(false)
+                Log.i(TAG, "[$platform] New video confirmed via signature change ($timeSinceLast ms): $signature")
+                return DetectionResult(platform, isNewContentScrolled = true, currentSignature = signature)
             } else {
-                // signature == lastSig: Still on the same video (e.g. slow drag within same video, comments, etc.)
-                return DetectionResult(platform, isNewContentScrolled = false, currentSignature = signature)
+                return DetectionResult(platform, isNewContentScrolled = false, currentSignature = lastSig)
             }
         }
 
-        // 3. Fallback when signature is null (pure video with zero text/metadata)
+        // 4. Physical scroll gesture (handles consecutive reels by the same creator, shared audio, or delayed rendering)
         if (isScrollEvent) {
             val timeSinceLast = now - getLastCountTime()
-            if (timeSinceLast >= MIN_FALLBACK_SCROLL_INTERVAL_MS) {
+            val requiredCooldown = if (signature != null && signature == lastSig) SAME_VIDEO_SWIPE_COOLDOWN_MS else ANONYMOUS_SCROLL_COOLDOWN_MS
+            if (timeSinceLast >= requiredCooldown) {
                 setLastCountTime(now)
                 setIsAnonymousPending(true)
                 setLastAnonymousTime(now)
-                setLastSignature(null)
-                Log.i(TAG, "[$platform] Fallback scroll counted ($timeSinceLast ms)")
-                return DetectionResult(platform, isNewContentScrolled = true, currentSignature = null)
+                if (signature != null) {
+                    setLastSignature(signature)
+                }
+                Log.i(TAG, "[$platform] Scroll counted via gesture ($timeSinceLast ms, sig=$signature)")
+                return DetectionResult(platform, isNewContentScrolled = true, currentSignature = signature)
             }
         }
 
-        return DetectionResult(platform, isNewContentScrolled = false, currentSignature = lastSig)
+        return DetectionResult(platform, isNewContentScrolled = false, currentSignature = signature ?: lastSig)
     }
 
     fun resetState() {

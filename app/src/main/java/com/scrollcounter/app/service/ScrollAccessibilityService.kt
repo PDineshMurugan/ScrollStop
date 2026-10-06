@@ -160,13 +160,18 @@ class ScrollAccessibilityService : AccessibilityService() {
             return
         }
 
-        // 3. Throttle passive content change events ONLY while actively tracking video playback and baseline is already set
+        // 4. If the user is actively dragging the overlay bar, prioritize UI thread for 100% smooth 120Hz drag
+        if (overlayManager.isDragging) {
+            return
+        }
+
+        // 5. Throttle passive content change events (e.g. video progress bar animations) to conserve battery
         if (currentActivePlatform != TargetPlatform.NONE &&
             !appDetector.isWaitingBaseline() &&
             event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) {
             val now = SystemClock.uptimeMillis()
-            if (now - lastContentChangeTime < 150L) {
+            if (now - lastContentChangeTime < 200L) {
                 return
             }
             lastContentChangeTime = now
@@ -174,16 +179,18 @@ class ScrollAccessibilityService : AccessibilityService() {
 
         // 4. Resolve the window root node (prefer topmost ancestor of event.source, fallback to rootInActiveWindow)
         val rootNode = try {
-            var eventRoot: AccessibilityNodeInfo? = event.source
-            while (eventRoot?.parent != null) {
-                eventRoot = eventRoot.parent
+            rootInActiveWindow ?: run {
+                var eventRoot: AccessibilityNodeInfo? = event.source
+                while (eventRoot?.parent != null) {
+                    eventRoot = eventRoot.parent
+                }
+                eventRoot
             }
-            eventRoot ?: rootInActiveWindow
         } catch (_: Exception) {
             try {
-                rootInActiveWindow
+                rootInActiveWindow ?: event.source
             } catch (_: Exception) {
-                null
+                event.source
             }
         }
 

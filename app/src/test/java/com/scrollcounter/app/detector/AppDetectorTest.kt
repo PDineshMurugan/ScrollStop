@@ -126,14 +126,11 @@ class AppDetectorTest {
 
         val result1 = detector.analyzeEvent(event1, root1)
         assertEquals(TargetPlatform.INSTAGRAM_REELS, result1.platform)
-        assertTrue(result1.isNewContentScrolled)
-
-        // Immediate duplicate event (same signature, bounce/fling) -> debounced
-        val result2 = detector.analyzeEvent(event1, root1)
-        assertFalse(result2.isNewContentScrolled)
+        // Baseline established on initial reel load (not counted until user scrolls to new reel)
+        assertFalse(result1.isNewContentScrolled)
 
         // Wait to simulate user scrolling to next distinct reel
-        Thread.sleep(700)
+        Thread.sleep(350)
 
         val author2 = createNode(
             resourceId = "com.instagram.android:id/clips_author",

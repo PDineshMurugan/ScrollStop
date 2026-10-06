@@ -7,6 +7,15 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Release version name (e.g. 1.1.0 or v1.1.0). Leave empty to auto-increment from git commit count.'
+        required: false
+        default: ''
+      release_title:
+        description: 'Custom Release Title (leave empty for default)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -36,17 +45,32 @@ jobs:
         id: version
         run: |
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+          INPUT_VERSION="${{ github.event.inputs.version_name }}"
+          
+          if [ -n "$INPUT_VERSION" ]; then
+            CLEAN_VERSION="${INPUT_VERSION#v}"
+            CLEAN_VERSION="${CLEAN_VERSION#V}"
+            TAG_NAME="v${CLEAN_VERSION}"
+            VERSION_NAME="${CLEAN_VERSION}"
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG_NAME="${{ github.ref_name }}"
             VERSION_NAME="${TAG_NAME#v}"
+            VERSION_NAME="${VERSION_NAME#V}"
           else
             TAG_NAME="v1.0.${COMMIT_COUNT}"
             VERSION_NAME="1.0.${COMMIT_COUNT}"
           fi
+
+          TITLE="${{ github.event.inputs.release_title }}"
+          if [ -z "$TITLE" ]; then
+            TITLE="ScrollStop $TAG_NAME"
+          fi
+
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
-          echo "Building ScrollStop version: $VERSION_NAME (tag: $TAG_NAME, code: $COMMIT_COUNT)"
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "Building ScrollStop version: $VERSION_NAME (tag: $TAG_NAME, title: $TITLE, code: $COMMIT_COUNT)"
 
       - name: Build Release APK
         run: ./gradlew assembleRelease -PversionCode=${{ steps.version.outputs.count }} -PversionName=${{ steps.version.outputs.version }} --stacktrace
@@ -56,6 +80,7 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk dist/scrollstop.apk
           cp app/build/outputs/apk/release/app-release.apk "dist/scrollstop-${{ steps.version.outputs.tag }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/ScrollStop-${{ steps.version.outputs.tag }}.apk"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -67,7 +92,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: "ScrollStop ${{ steps.version.outputs.tag }}"
+          name: "${{ steps.version.outputs.title }}"
           files: dist/*.apk
           generate_release_notes: true
           draft: false
