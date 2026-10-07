@@ -79,7 +79,6 @@ jobs:
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk dist/scrollstop.apk
-          cp app/build/outputs/apk/release/app-release.apk "dist/scrollstop-${{ steps.version.outputs.tag }}.apk"
           cp app/build/outputs/apk/release/app-release.apk "dist/ScrollStop-${{ steps.version.outputs.tag }}.apk"
 
       - name: Upload APK Artifact
@@ -97,3 +96,4 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+          make_latest: true
