@@ -26,7 +26,16 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Widgets
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
+import android.os.Build
+import com.scrollcounter.app.widget.ScrollCounterWidget
+import com.scrollcounter.app.widget.ScrollAnalyticsWidget
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.scrollcounter.app.BuildConfig
@@ -40,6 +49,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.scrollcounter.app.data.DailyRecord
@@ -105,6 +116,8 @@ fun MainScreen() {
     val coroutineScope = rememberCoroutineScope()
     val updateStatus by UpdateManager.status.collectAsState()
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var showWidgetGuideDialog by remember { mutableStateOf(false) }
+    var showWidgetChooserDialog by remember { mutableStateOf(false) }
 
     // Check for updates automatically in the background
     LaunchedEffect(Unit) {
@@ -224,6 +237,204 @@ fun MainScreen() {
         )
     }
 
+    if (showWidgetChooserDialog) {
+        AlertDialog(
+            onDismissRequest = { showWidgetChooserDialog = false },
+            containerColor = SurfaceCard,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Widgets,
+                        contentDescription = null,
+                        tint = AccentGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Add Home Screen Widget",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Choose your preferred widget style to pin to your home screen:",
+                        color = TextSecondary,
+                        fontSize = 12.5.sp
+                    )
+
+                    // Option 1: 2x2 Quick Counter
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceDark)
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+                            .clickable {
+                                showWidgetChooserDialog = false
+                                requestPinWidget(
+                                    context = context,
+                                    providerClass = ScrollCounterWidget::class.java,
+                                    onShowGuide = { showWidgetGuideDialog = true }
+                                )
+                            }
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Quick Counter",
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(TextPrimary)
+                                    .padding(horizontal = 7.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "2 × 2",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BgOled
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Clean & minimal: Live Reels & Shorts scroll count and watch time side-by-side.",
+                            fontSize = 11.5.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    // Option 2: 3x4 Weekly Analytics
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceDark)
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+                            .clickable {
+                                showWidgetChooserDialog = false
+                                requestPinWidget(
+                                    context = context,
+                                    providerClass = ScrollAnalyticsWidget::class.java,
+                                    onShowGuide = { showWidgetGuideDialog = true }
+                                )
+                            }
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Weekly Analytics",
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(AccentGreen)
+                                    .padding(horizontal = 7.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "3 × 4",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BgOled
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Full dashboard: Live scroll counts plus 7-day activity bar chart and weekly totals.",
+                            fontSize = 11.5.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    // Manual guide shortcut link
+                    Text(
+                        text = "Don't see pin prompt? Tap here for manual instructions",
+                        fontSize = 11.5.sp,
+                        color = TextTertiary,
+                        modifier = Modifier
+                            .clickable {
+                                showWidgetChooserDialog = false
+                                showWidgetGuideDialog = true
+                            }
+                            .padding(top = 2.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showWidgetChooserDialog = false }) {
+                    Text("Close", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    if (showWidgetGuideDialog) {
+        AlertDialog(
+            onDismissRequest = { showWidgetGuideDialog = false },
+            containerColor = SurfaceCard,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Widgets,
+                        contentDescription = null,
+                        tint = AccentGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Home Screen Widgets",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "How to add ScrollStop widgets to your home screen:",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        text = "1. Long press any empty space on your home screen.\n2. Tap 'Widgets' from the menu.\n3. Locate 'ScrollStop' to see both widgets:\n   • Scroll Counter (2×2) — Clean count & time alone\n   • Weekly Analytics (3×4) — Counters + 7-day activity bars\n4. Drag your preferred widget to your screen!",
+                        color = TextPrimary,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showWidgetGuideDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = TextPrimary, contentColor = BgOled)
+                ) {
+                    Text("Got it", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
     Scaffold(
         containerColor = BgOled
     ) { paddingValues ->
@@ -312,7 +523,7 @@ fun MainScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f).padding(end = 10.dp)) {
                         Icon(
                             imageVector = Icons.Default.Lightbulb,
                             contentDescription = null,
@@ -325,21 +536,34 @@ fun MainScreen() {
                                 text = "Allow Unrestricted Battery",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
+                                color = TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "Recommended on Samsung to prevent overnight sleep & missing counts",
+                                text = "Prevents missing counts on Samsung",
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
-                    Text(
-                        text = "Allow",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentAmber
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(AccentAmber.copy(alpha = 0.15f))
+                            .border(0.8.dp, AccentAmber.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            text = "Allow",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentAmber,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
 
@@ -358,7 +582,7 @@ fun MainScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f).padding(end = 10.dp)) {
                             Icon(
                                 imageVector = Icons.Default.SystemUpdate,
                                 contentDescription = null,
@@ -371,21 +595,34 @@ fun MainScreen() {
                                     text = "ScrollStop v${release.versionName} Available",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
+                                    color = TextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = "Tap to review & download the new APK",
+                                    text = "Tap to review & download",
                                     fontSize = 11.sp,
-                                    color = TextSecondary
+                                    color = TextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
-                        Text(
-                            text = "Update",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentGreen
-                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(AccentGreen.copy(alpha = 0.15f))
+                                .border(0.8.dp, AccentGreen.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "Update",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentGreen,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
@@ -395,6 +632,13 @@ fun MainScreen() {
 
             // --- Last 7 Days Weekly Activity Bar Chart ---
             WeeklyAnalyticsCard(weeklyRecords = settings.weeklyRecords)
+
+            // --- Quick Home Screen Widget Banner ---
+            QuickWidgetBanner(
+                onAddWidget = {
+                    showWidgetChooserDialog = true
+                }
+            )
 
             // --- Mode Segmented Switch (Count vs Enforce) ---
             ModeSelector(
@@ -518,9 +762,9 @@ fun MainScreen() {
                     subtitle = when (updateStatus) {
                         is UpdateStatus.Checking -> "Checking GitHub for updates..."
                         is UpdateStatus.UpdateAvailable -> "v${(updateStatus as UpdateStatus.UpdateAvailable).release.versionName} ready • Tap to install"
-                        is UpdateStatus.UpToDate -> "Latest version installed • Build ${BuildConfig.VERSION_CODE}"
+                        is UpdateStatus.UpToDate -> "Up to date • Build ${BuildConfig.VERSION_CODE}"
                         is UpdateStatus.Error -> "Tap to check for updates"
-                        is UpdateStatus.Idle -> "Build ${BuildConfig.VERSION_CODE} • Tap to check for updates"
+                        is UpdateStatus.Idle -> "Build ${BuildConfig.VERSION_CODE} • Tap to check"
                     },
                     badgeText = when (updateStatus) {
                         is UpdateStatus.Checking -> "Checking"
@@ -547,10 +791,24 @@ fun MainScreen() {
 
                 HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
 
-                // 2. Report Bug / Issue
+                // 2. GitHub Repository
+                CommunityRow(
+                    title = "GitHub Repository",
+                    subtitle = "Star the project & view source",
+                    badgeText = "GitHub",
+                    badgeColor = TextSecondary,
+                    icon = Icons.AutoMirrored.Filled.OpenInNew,
+                    onClick = {
+                        UpdateManager.openBrowser(context, UpdateManager.GITHUB_REPO_URL)
+                    }
+                )
+
+                HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
+
+                // 3. Report Bug / Issue
                 CommunityRow(
                     title = "Report a Bug",
-                    subtitle = "Found an issue or false scroll? Open a GitHub issue",
+                    subtitle = "Found an issue? Open on GitHub",
                     badgeText = "Issues",
                     badgeColor = AccentAmber,
                     icon = Icons.Default.BugReport,
@@ -561,10 +819,10 @@ fun MainScreen() {
 
                 HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
 
-                // 3. Request Feature
+                // 4. Request Feature
                 CommunityRow(
                     title = "Request a Feature",
-                    subtitle = "Suggest new platform support (TikTok, etc.)",
+                    subtitle = "Suggest new platforms & ideas",
                     badgeText = "Ideas",
                     badgeColor = TextPrimary,
                     icon = Icons.Default.Lightbulb,
@@ -575,16 +833,116 @@ fun MainScreen() {
 
                 HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
 
-                // 4. GitHub Repository
+                // 5. Home Screen Widget
                 CommunityRow(
-                    title = "GitHub Repository",
-                    subtitle = "Star the project, inspect source, or contribute",
-                    badgeText = "GitHub",
-                    badgeColor = TextSecondary,
-                    icon = Icons.AutoMirrored.Filled.OpenInNew,
+                    title = "Home Screen Widget",
+                    subtitle = "Quick Counter (2×2) or Weekly Analytics (3×4)",
+                    badgeText = "2 Styles",
+                    badgeColor = AccentGreen,
+                    icon = Icons.Default.Widgets,
                     onClick = {
-                        UpdateManager.openBrowser(context, UpdateManager.GITHUB_REPO_URL)
+                        showWidgetChooserDialog = true
                     }
+                )
+            }
+
+            // --- Support Creator (Buy Me a Chai) Banner ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SurfaceDark)
+                    .border(1.dp, AccentAmber.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                    .clickable { UpdateManager.openBrowser(context, UpdateManager.BUY_ME_A_CHAI_URL) }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(AccentAmber.copy(alpha = 0.15f))
+                            .border(1.dp, AccentAmber.copy(alpha = 0.35f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocalCafe,
+                            contentDescription = "Buy Me a Chai",
+                            tint = AccentAmber,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Buy Dinesh a Chai",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Support Creator • Free & ad-free",
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(AccentAmber)
+                        .clickable { UpdateManager.openBrowser(context, UpdateManager.BUY_ME_A_CHAI_URL) }
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Support",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BgOled
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "☕",
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
+            // --- Clean Footer Signature ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "ScrollStop v${BuildConfig.VERSION_NAME} • 100% Offline & Private",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextTertiary,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "Built with ❤️ by Dinesh Murugan P",
+                    fontSize = 10.5.sp,
+                    color = TextTertiary.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
                 )
             }
 
@@ -606,7 +964,7 @@ fun CommunityRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 13.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -634,13 +992,16 @@ fun CommunityRow(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextPrimary
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = subtitle,
                     fontSize = 11.sp,
                     color = TextSecondary,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -659,7 +1020,8 @@ fun CommunityRow(
                     text = badgeText,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = badgeColor
+                    color = badgeColor,
+                    maxLines = 1
                 )
             }
             Spacer(modifier = Modifier.width(6.dp))
@@ -944,57 +1306,140 @@ fun WeeklyAnalyticsCard(weeklyRecords: List<DailyRecord>) {
         if (selectedRecord != null) {
             HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
 
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(SurfaceCard)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Header Row: Day Label on left, Day Total on right
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = if (selectedRecord.isToday) "Today (${selectedRecord.dayLabel})" else "${selectedRecord.dayLabel} (${selectedRecord.date})",
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (selectedRecord.isToday) AccentGreen else TextPrimary
+                        color = if (selectedRecord.isToday) AccentGreen else TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "${selectedRecord.totalCount} scrolls • ${selectedRecord.totalMinutes}m",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
+                // Symmetrical Platform Cards (Reels & Shorts side-by-side)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Reels
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Instagram Reels Card
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SurfaceCardSecondary)
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Clean Badge Pill (Replacing awkward dot)
                         Box(
                             modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(Brush.linearGradient(InstaGradient))
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(Color(0xFFFD1D1D).copy(alpha = 0.15f))
+                                .border(0.8.dp, Color(0xFFFCB045).copy(alpha = 0.4f), RoundedCornerShape(5.dp))
+                                .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                        ) {
+                            Text(
+                                text = "REELS",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFCB045)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        // Count
                         Text(
-                            text = "${selectedRecord.instagramCount} reels (${selectedRecord.instagramSeconds / 60}m)",
-                            fontSize = 11.sp,
-                            color = TextSecondary
+                            text = "${selectedRecord.instagramCount} reels",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        // Time (Consistently below count)
+                        Text(
+                            text = "${selectedRecord.instagramSeconds / 60}m active",
+                            fontSize = 11.5.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    // Shorts
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // YouTube Shorts Card
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SurfaceCardSecondary)
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Clean Badge Pill (Replacing awkward dot)
                         Box(
                             modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(YtColor)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(YtColor.copy(alpha = 0.15f))
+                                .border(0.8.dp, YtColor.copy(alpha = 0.4f), RoundedCornerShape(5.dp))
+                                .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                        ) {
+                            Text(
+                                text = "SHORTS",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = YtColor
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        // Count
                         Text(
-                            text = "${selectedRecord.youtubeCount} shorts (${selectedRecord.youtubeSeconds / 60}m)",
-                            fontSize = 11.sp,
-                            color = TextSecondary
+                            text = "${selectedRecord.youtubeCount} shorts",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        // Time (Consistently below count)
+                        Text(
+                            text = "${selectedRecord.youtubeSeconds / 60}m active",
+                            fontSize = 11.5.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -1063,20 +1508,25 @@ fun StatBox(
                 fontSize = 32.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
-                letterSpacing = (-1).sp
+                letterSpacing = (-1).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = if (label.contains("SHORT", ignoreCase = true)) "shorts" else "reels",
                 fontSize = 12.sp,
                 color = TextTertiary,
-                modifier = Modifier.padding(bottom = 6.dp)
+                modifier = Modifier.padding(bottom = 6.dp),
+                maxLines = 1
             )
         }
 
         Text(
             text = "${timeMinutes}m active today",
             fontSize = 12.sp,
-            color = TextSecondary
+            color = TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
         if (enforceLimits) {
@@ -1259,7 +1709,10 @@ fun PlatformRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
@@ -1267,18 +1720,22 @@ fun PlatformRow(
                         .background(Brush.linearGradient(accent))
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = name,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextPrimary
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     val activeMins = activeSeconds / 60
                     Text(
                         text = "$count scrolls • ${activeMins}m today",
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -1362,6 +1819,80 @@ fun PlatformRow(
     }
 }
 
+// --- Quick Home Screen Widget Banner ---
+@Composable
+fun QuickWidgetBanner(
+    onAddWidget: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(SurfaceDark)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
+            .clickable { onAddWidget() }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f).padding(end = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceCardSecondary)
+                    .border(1.dp, BorderSubtle, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Widgets,
+                    contentDescription = "Widget",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = "Track on Home Screen",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Live counters • Resize for 7D analytics",
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(TextPrimary)
+                .clickable { onAddWidget() }
+                .padding(horizontal = 11.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Add Widget",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = BgOled,
+                maxLines = 1
+            )
+        }
+    }
+}
+
 // --- Minimalist Toggle Row ---
 @Composable
 fun MinimalToggleRow(
@@ -1378,8 +1909,8 @@ fun MinimalToggleRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, fontSize = 12.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
 
         Switch(
@@ -1426,7 +1957,9 @@ fun MissingPermissionsBanner(
                 text = "Setup required to count scrolls",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -1434,18 +1967,44 @@ fun MissingPermissionsBanner(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(SurfaceCard)
                     .clickable { onOpenAccessibility() }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Accessibility Service", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-                    Text("Installed apps ➔ ScrollStop Service ➔ Turn ON", fontSize = 11.sp, color = TextSecondary)
+                Column(modifier = Modifier.weight(1f).padding(end = 10.dp)) {
+                    Text(
+                        text = "Accessibility Service",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "ScrollStop Service ➔ Turn ON",
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-                Text("Enable", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = AccentAmber)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(AccentAmber.copy(alpha = 0.15f))
+                        .border(0.8.dp, AccentAmber.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = "Enable",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentAmber,
+                        maxLines = 1
+                    )
+                }
             }
 
             // Quick App Info helper if restricted setting
@@ -1504,19 +2063,23 @@ fun MissingPermissionsBanner(
                     .background(SurfaceCardSecondary.copy(alpha = 0.6f))
                     .clickable { showRestrictedDialog = true }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Greyed out with 'Restricted setting'?",
-                    fontSize = 12.sp,
-                    color = AccentAmber
+                    text = "Restricted setting blocking you?",
+                    fontSize = 11.5.sp,
+                    color = AccentAmber,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Fix guide ➔",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
+                    text = "Fix ➔",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    maxLines = 1
                 )
             }
         }
@@ -1525,18 +2088,44 @@ fun MissingPermissionsBanner(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(SurfaceCard)
                     .clickable { onOpenOverlay() }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Display Over Other Apps", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-                    Text("Required for on-screen counter badge", fontSize = 11.sp, color = TextSecondary)
+                Column(modifier = Modifier.weight(1f).padding(end = 10.dp)) {
+                    Text(
+                        text = "Display Over Other Apps",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Required for on-screen counter badge",
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-                Text("Enable", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = AccentAmber)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(AccentAmber.copy(alpha = 0.15f))
+                        .border(0.8.dp, AccentAmber.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = "Enable",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentAmber,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
@@ -1596,5 +2185,35 @@ fun requestBatteryOptimizationExemption(context: Context) {
             }
             context.startActivity(intent)
         } catch (_: Exception) {}
+    }
+}
+
+fun requestPinWidget(
+    context: Context,
+    providerClass: Class<out AppWidgetProvider> = ScrollCounterWidget::class.java,
+    onShowGuide: () -> Unit
+) {
+    val appWidgetManager = AppWidgetManager.getInstance(context)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && appWidgetManager.isRequestPinAppWidgetSupported) {
+        val provider = ComponentName(context, providerClass)
+        val successIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val successPendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            successIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        try {
+            val pinned = appWidgetManager.requestPinAppWidget(provider, null, successPendingIntent)
+            if (!pinned) {
+                onShowGuide()
+            }
+        } catch (_: Exception) {
+            onShowGuide()
+        }
+    } else {
+        onShowGuide()
     }
 }

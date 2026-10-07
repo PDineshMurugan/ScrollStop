@@ -43,6 +43,7 @@ object UpdateManager {
     const val GITHUB_FEATURE_REQUEST_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/issues/new?template=feature_request.md&title=%5BFeature%5D+"
     const val GITHUB_LATEST_RELEASE_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
     const val DIRECT_APK_DOWNLOAD_URL = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest/download/scrollstop.apk"
+    const val BUY_ME_A_CHAI_URL = "https://buymeachai.ezee.li/Dinesh_Murugan"
 
     private const val API_RELEASES_URL = "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
 

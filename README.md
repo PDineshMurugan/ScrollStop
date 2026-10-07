@@ -1,10 +1,11 @@
 # ScrollStop 📱🧘
 
-[![Direct Download APK](https://img.shields.io/badge/Direct_Download-APK_(v1.0.0)-22c55e?style=for-the-badge&logo=android&logoColor=white)](https://github.com/PDineshMurugan/ScrollStop/raw/main/release/scrollstop.apk)
+[![Direct Download APK](https://img.shields.io/badge/Direct_Download-APK_(Latest)-22c55e?style=for-the-badge&logo=android&logoColor=white)](https://github.com/PDineshMurugan/ScrollStop/releases/latest/download/scrollstop.apk)
 [![Platform](https://img.shields.io/badge/Platform-Android_8.0+_(API_26--35)-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Privacy First](https://img.shields.io/badge/Privacy-100%25_Local_Processing-10B981?style=for-the-badge&logo=shield&logoColor=white)](#-privacy--security-manifesto)
+[![Buy Me A Chai](https://img.shields.io/badge/Buy_Me_A_Chai-Support_Creator-FF813F?style=for-the-badge&logo=coffeescript&logoColor=white)](https://buymeachai.ezee.li/Dinesh_Murugan)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 **ScrollStop** is a featherlight (~1 MB), distraction-free native Android utility designed to curb mindless doomscrolling on **Instagram Reels** and **YouTube Shorts**. Built with modern Jetpack Compose, true pitch-black OLED aesthetics, and intelligent debounced accessibility detection, it provides real-time awareness and mindful friction without draining battery or compromising privacy.
@@ -15,8 +16,8 @@
 
 | Artifact | Direct Link | File Size | Description |
 | :--- | :--- | :--- | :--- |
-| **Direct APK Download** | [⬇️ **Download `scrollstop.apk`**](https://github.com/PDineshMurugan/ScrollStop/raw/main/release/scrollstop.apk) | ~1.0 MB | Instant 1-tap direct install from repo |
-| **Versioned Release APK** | [📦 **Download `scrollstop-v1.0.0.apk`**](https://github.com/PDineshMurugan/ScrollStop/raw/main/release/scrollstop-v1.0.0.apk) | ~1.0 MB | Direct install of v1.0.0 production build |
+| **Latest Release APK (Always Updated)** | [⬇️ **Download `scrollstop.apk` (Latest)**](https://github.com/PDineshMurugan/ScrollStop/releases/latest/download/scrollstop.apk) | ~1.0 MB | Instant 1-tap direct install of the newest build from GitHub Releases |
+| **Repository Raw File** | [📦 **Download `release/scrollstop.apk`**](https://github.com/PDineshMurugan/ScrollStop/raw/main/release/scrollstop.apk) | ~1.0 MB | Synced copy in repository tree |
 | **Local Cloned Path** | [`release/scrollstop.apk`](release/scrollstop.apk) | ~1.0 MB | Local file if you cloned this repository |
 | **GitHub Releases Hub** | [🏷️ **GitHub Releases Archive**](https://github.com/PDineshMurugan/ScrollStop/releases) | — | Release tags, changelogs & release assets |
 
@@ -31,7 +32,7 @@
 
 | Minimalist Dashboard | Real-Time Floating HUD | Home Screen Widget |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/dashboard.png" width="280" alt="ScrollStop Minimalist Dashboard" /> | <img src="docs/screenshots/reels_hud.png" width="380" alt="Floating HUD on Instagram Reel" /> | <img src="docs/screenshots/home_widget.png" width="380" alt="Home Screen Glance Widget" /> |
+| <img src="docs/screenshots/dashboard.jpeg" width="280" alt="ScrollStop Minimalist Dashboard" /> | <img src="docs/screenshots/reels_hud.jpeg" width="380" alt="Floating HUD on Instagram Reel" /> | <img src="docs/screenshots/home_widget.jpeg" width="380" alt="Home Screen Glance Widget" /> |
 | *Clean glance metrics, OLED black palette, & instant mode switching* | *Frosted HUD, tap-to-close badge, & real-time time & scroll tracking* | *Pitch-black home widget showing today's scrolls & active duration* |
 
 ---
@@ -147,6 +148,7 @@ Encountered an issue, false scroll count, or have an idea for a new feature? You
 
 - 🐛 **Report a Bug**: [Open Bug Report](https://github.com/PDineshMurugan/ScrollStop/issues/new?template=bug_report.md&title=%5BBug%5D+)
 - 💡 **Request a Feature**: [Open Feature Request](https://github.com/PDineshMurugan/ScrollStop/issues/new?template=feature_request.md&title=%5BFeature%5D+)
+- ☕ **Support Creator**: [Buy Dinesh Murugan P a Chai - Support Creator](https://buymeachai.ezee.li/Dinesh_Murugan)
 - 🏷️ **GitHub Issues**: [Browse All Issues](https://github.com/PDineshMurugan/ScrollStop/issues)
 - ⭐ **GitHub Repository**: [PDineshMurugan/ScrollStop](https://github.com/PDineshMurugan/ScrollStop)
 

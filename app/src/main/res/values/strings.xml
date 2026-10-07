@@ -3,5 +3,9 @@
     <string name="app_name">ScrollStop</string>
     <string name="accessibility_service_label">ScrollStop Service</string>
     <string name="accessibility_service_description">Monitors Instagram Reels and YouTube Shorts scroll counts and enforces healthy daily limits without requiring login or internet.</string>
-    <string name="widget_description">Shows today\'s Instagram Reels &amp; YouTube Shorts scroll count and watch time.</string>
+    <string name="widget_description">Live Instagram Reels &amp; YouTube Shorts counter.</string>
+    <string name="widget_counter_label">Scroll Counter (2x2)</string>
+    <string name="widget_analytics_label">Weekly Analytics (3x4)</string>
+    <string name="widget_counter_description">Live Instagram Reels &amp; YouTube Shorts scroll counter.</string>
+    <string name="widget_analytics_description">Live scroll counters with full 7-day activity bar chart and daily totals.</string>
 </resources>

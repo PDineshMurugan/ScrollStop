@@ -49,17 +49,30 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- Home Screen Widget -->
+        <!-- Home Screen Widget: 2x2 Quick Counter -->
         <receiver
             android:name=".widget.ScrollCounterWidget"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/widget_counter_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/scroll_counter_widget_info" />
+        </receiver>
+
+        <!-- Home Screen Widget: 3x4 Weekly Analytics -->
+        <receiver
+            android:name=".widget.ScrollAnalyticsWidget"
+            android:exported="true"
+            android:label="@string/widget_analytics_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/scroll_analytics_widget_info" />
         </receiver>
 
     </application>

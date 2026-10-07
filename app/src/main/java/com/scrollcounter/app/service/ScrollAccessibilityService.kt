@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -26,17 +25,16 @@ class ScrollAccessibilityService : AccessibilityService() {
     private var currentActivePlatform: TargetPlatform = TargetPlatform.NONE
     private var isTimerRunning = false
     private var isOverlayDismissedByUser = false
-    private var lastContentChangeTime = 0L
+
+    // Debounced validation candidate runnables
+    private var pendingValidationRunnable: Runnable? = null
+    private var pendingRetryRunnable: Runnable? = null
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == Intent.ACTION_SCREEN_OFF) {
                 if (currentActivePlatform != TargetPlatform.NONE) {
-                    currentActivePlatform = TargetPlatform.NONE
-                    isOverlayDismissedByUser = false
-                    appDetector.resetState()
-                    stopTimer()
-                    mainHandler.post { overlayManager.hideCounter() }
+                    onLeaveTargetPlatform()
                 }
             }
         }
@@ -100,6 +98,9 @@ class ScrollAccessibilityService : AccessibilityService() {
 
     companion object {
         const val TAG = "ScrollCounter"
+        const val DEBOUNCE_SETTLE_DELAY_MS = 300L
+        const val METADATA_RETRY_DELAY_MS = 200L
+
         var instance: ScrollAccessibilityService? = null
             private set
 
@@ -135,94 +136,144 @@ class ScrollAccessibilityService : AccessibilityService() {
 
         // 2. System UI (status bar, notifications, lockscreen, app switcher)
         if (packageName == "com.android.systemui") {
-            // Only dismiss overlay if System UI opens a full window (e.g. notification shade, lockscreen, recents)
             if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 if (currentActivePlatform != TargetPlatform.NONE) {
-                    currentActivePlatform = TargetPlatform.NONE
-                    isOverlayDismissedByUser = false
-                    appDetector.resetState()
-                    stopTimer()
-                    mainHandler.post { overlayManager.hideCounter() }
+                    onLeaveTargetPlatform()
                 }
             }
             return
         }
 
-        // 3. User switched to another app or Launcher (Chrome, WhatsApp, Launcher, Settings, etc.)
+        // 3. User switched to another app or Launcher
         if (packageName != AppDetector.PACKAGE_INSTAGRAM && packageName != AppDetector.PACKAGE_YOUTUBE) {
             if (currentActivePlatform != TargetPlatform.NONE) {
-                currentActivePlatform = TargetPlatform.NONE
-                isOverlayDismissedByUser = false
-                appDetector.resetState()
-                stopTimer()
-                mainHandler.post { overlayManager.hideCounter() }
+                onLeaveTargetPlatform()
             }
             return
         }
 
-        // 4. If the user is actively dragging the overlay bar, prioritize UI thread for 100% smooth 120Hz drag
+        // 4. If the user is actively dragging the overlay bar, prioritize UI thread
         if (overlayManager.isDragging) {
             return
         }
 
-        // 5. Throttle passive content change events (e.g. video progress bar animations) to conserve battery
-        if (currentActivePlatform != TargetPlatform.NONE &&
-            !appDetector.isWaitingBaseline() &&
-            event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-        ) {
-            val now = SystemClock.uptimeMillis()
-            if (now - lastContentChangeTime < 200L) {
-                return
-            }
-            lastContentChangeTime = now
+        // 5. CRITICAL: Passively ignore TYPE_WINDOW_CONTENT_CHANGED!
+        // Video playback progress bars, audio animations, and comment counts
+        // fire constantly. We perform ZERO tree scans while watching a video!
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            return
         }
 
-        // 4. Resolve the window root node (prefer topmost ancestor of event.source, fallback to rootInActiveWindow)
-        val rootNode = try {
-            rootInActiveWindow ?: run {
-                var eventRoot: AccessibilityNodeInfo? = event.source
-                while (eventRoot?.parent != null) {
-                    eventRoot = eventRoot.parent
-                }
-                eventRoot
-            }
-        } catch (_: Exception) {
-            try {
-                rootInActiveWindow ?: event.source
-            } catch (_: Exception) {
-                event.source
-            }
+        // 6. Handle Window State Changes (Entering/leaving Reels or switching tabs)
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            handleWindowStateChanged(packageName, event)
+            return
         }
 
-        val result = appDetector.analyzeEvent(event, rootNode)
+        // 7. Handle Physical Scroll Events (Candidate scroll trigger)
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+            handleViewScrolled(packageName, event)
+            return
+        }
+    }
+
+    private fun handleWindowStateChanged(packageName: String, event: AccessibilityEvent) {
+        val rootNode = resolveRootNode(event) ?: return
+        val detected = appDetector.detectPlatform(packageName, rootNode)
+
         val prefs = ScrollCounterApp.instance.preferencesManager
         val settings = prefs.settings.value
 
-        when (result.platform) {
+        when (detected) {
             TargetPlatform.INSTAGRAM_REELS -> {
                 if (!settings.instagramEnabled) {
-                    if (currentActivePlatform != TargetPlatform.NONE) {
-                        currentActivePlatform = TargetPlatform.NONE
-                        isOverlayDismissedByUser = false
-                        appDetector.resetState()
-                        stopTimer()
-                        mainHandler.post { overlayManager.hideCounter() }
-                    }
+                    if (currentActivePlatform != TargetPlatform.NONE) onLeaveTargetPlatform()
                     return
                 }
-
                 val isFirstEntry = currentActivePlatform != TargetPlatform.INSTAGRAM_REELS
                 currentActivePlatform = TargetPlatform.INSTAGRAM_REELS
                 startTimerIfNeeded()
-
                 if (isFirstEntry) {
                     updateOverlayUI()
+                    // Establish baseline on the initial reel so opening the screen does not count as a scroll
+                    appDetector.establishBaseline(TargetPlatform.INSTAGRAM_REELS, rootNode)
                 }
+            }
 
-                if (result.isNewContentScrolled) {
+            TargetPlatform.YOUTUBE_SHORTS -> {
+                if (!settings.youtubeEnabled) {
+                    if (currentActivePlatform != TargetPlatform.NONE) onLeaveTargetPlatform()
+                    return
+                }
+                val isFirstEntry = currentActivePlatform != TargetPlatform.YOUTUBE_SHORTS
+                currentActivePlatform = TargetPlatform.YOUTUBE_SHORTS
+                startTimerIfNeeded()
+                if (isFirstEntry) {
+                    updateOverlayUI()
+                    // Establish baseline on the initial short
+                    appDetector.establishBaseline(TargetPlatform.YOUTUBE_SHORTS, rootNode)
+                }
+            }
+
+            TargetPlatform.NONE -> {
+                if (currentActivePlatform != TargetPlatform.NONE) {
+                    onLeaveTargetPlatform()
+                }
+            }
+        }
+    }
+
+    private fun handleViewScrolled(packageName: String, event: AccessibilityEvent) {
+        // If not currently in a target platform, check if this scroll brought user into Reels/Shorts
+        if (currentActivePlatform == TargetPlatform.NONE) {
+            val rootNode = resolveRootNode(event) ?: return
+            val detected = appDetector.detectPlatform(packageName, rootNode)
+            if (detected == TargetPlatform.NONE) return
+            handleWindowStateChanged(packageName, event)
+        }
+
+        // At most ONE pending validation scan per settled transition window:
+        // Cancel any pending validation from an unsettled rapid multi-swipe
+        cancelPendingValidation()
+
+        val validationRunnable = Runnable {
+            performValidationScan(isRetry = false)
+        }
+        pendingValidationRunnable = validationRunnable
+        mainHandler.postDelayed(validationRunnable, DEBOUNCE_SETTLE_DELAY_MS)
+    }
+
+    private fun performValidationScan(isRetry: Boolean) {
+        if (currentActivePlatform == TargetPlatform.NONE) return
+
+        val rootNode = resolveRootNode() ?: return
+        val result = appDetector.validateTransition(currentActivePlatform, rootNode, isRetry)
+
+        if (!result.isStillInTarget) {
+            onLeaveTargetPlatform()
+            return
+        }
+
+        if (result.shouldRetry && !isRetry) {
+            // Identity metadata hasn't loaded into the accessibility tree yet.
+            // Schedule a single fast retry scan in 200ms instead of creating a phantom count!
+            cancelPendingValidation()
+            val retryRunnable = Runnable {
+                performValidationScan(isRetry = true)
+            }
+            pendingRetryRunnable = retryRunnable
+            mainHandler.postDelayed(retryRunnable, METADATA_RETRY_DELAY_MS)
+            return
+        }
+
+        if (result.isNewContentScrolled) {
+            val prefs = ScrollCounterApp.instance.preferencesManager
+            val settings = prefs.settings.value
+
+            when (currentActivePlatform) {
+                TargetPlatform.INSTAGRAM_REELS -> {
                     val count = prefs.incrementInstagramCount()
                     updateOverlayUI()
-
                     if (settings.enforceLimits && settings.limitMode == LimitMode.SCROLLS) {
                         if (count >= settings.instagramScrollLimit) {
                             enforceLimit(
@@ -234,32 +285,10 @@ class ScrollAccessibilityService : AccessibilityService() {
                         }
                     }
                 }
-            }
 
-            TargetPlatform.YOUTUBE_SHORTS -> {
-                if (!settings.youtubeEnabled) {
-                    if (currentActivePlatform != TargetPlatform.NONE) {
-                        currentActivePlatform = TargetPlatform.NONE
-                        isOverlayDismissedByUser = false
-                        appDetector.resetState()
-                        stopTimer()
-                        mainHandler.post { overlayManager.hideCounter() }
-                    }
-                    return
-                }
-
-                val isFirstEntry = currentActivePlatform != TargetPlatform.YOUTUBE_SHORTS
-                currentActivePlatform = TargetPlatform.YOUTUBE_SHORTS
-                startTimerIfNeeded()
-
-                if (isFirstEntry) {
-                    updateOverlayUI()
-                }
-
-                if (result.isNewContentScrolled) {
+                TargetPlatform.YOUTUBE_SHORTS -> {
                     val count = prefs.incrementYouTubeCount()
                     updateOverlayUI()
-
                     if (settings.enforceLimits && settings.limitMode == LimitMode.SCROLLS) {
                         if (count >= settings.youtubeScrollLimit) {
                             enforceLimit(
@@ -271,17 +300,42 @@ class ScrollAccessibilityService : AccessibilityService() {
                         }
                     }
                 }
-            }
 
-            TargetPlatform.NONE -> {
-                // User is in normal Instagram Feed, search, profile, or DMs
-                if (currentActivePlatform != TargetPlatform.NONE) {
-                    currentActivePlatform = TargetPlatform.NONE
-                    isOverlayDismissedByUser = false
-                    appDetector.resetState()
-                    stopTimer()
-                    mainHandler.post { overlayManager.hideCounter() }
+                TargetPlatform.NONE -> {}
+            }
+        }
+    }
+
+    private fun cancelPendingValidation() {
+        pendingValidationRunnable?.let { mainHandler.removeCallbacks(it) }
+        pendingValidationRunnable = null
+        pendingRetryRunnable?.let { mainHandler.removeCallbacks(it) }
+        pendingRetryRunnable = null
+    }
+
+    private fun onLeaveTargetPlatform() {
+        currentActivePlatform = TargetPlatform.NONE
+        isOverlayDismissedByUser = false
+        cancelPendingValidation()
+        appDetector.resetState()
+        stopTimer()
+        mainHandler.post { overlayManager.hideCounter() }
+    }
+
+    private fun resolveRootNode(event: AccessibilityEvent? = null): AccessibilityNodeInfo? {
+        return try {
+            rootInActiveWindow ?: run {
+                var eventRoot: AccessibilityNodeInfo? = event?.source
+                while (eventRoot?.parent != null) {
+                    eventRoot = eventRoot.parent
                 }
+                eventRoot
+            }
+        } catch (_: Exception) {
+            try {
+                rootInActiveWindow ?: event?.source
+            } catch (_: Exception) {
+                event?.source
             }
         }
     }
@@ -355,6 +409,7 @@ class ScrollAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
+        cancelPendingValidation()
         stopTimer()
         mainHandler.post { overlayManager.cleanup() }
     }
@@ -362,6 +417,7 @@ class ScrollAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         instance = null
+        cancelPendingValidation()
         stopTimer()
         try {
             unregisterReceiver(screenReceiver)

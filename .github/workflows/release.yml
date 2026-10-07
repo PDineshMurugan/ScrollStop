@@ -97,3 +97,18 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
+
+      - name: Sync Latest APK into Repository
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p release
+          cp dist/scrollstop.apk release/scrollstop.apk
+          git add release/scrollstop.apk
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): sync release/scrollstop.apk for ${{ steps.version.outputs.tag }} [skip ci]"
+            git pull origin main --rebase
+            git push origin main
+          fi
+
