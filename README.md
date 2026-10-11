@@ -131,10 +131,20 @@ ScrollStop is built on the philosophy of **complete data sovereignty**:
 
 ## ⚙️ Initial Device Setup
 
+> 🛡️ **Android 13, 14 & 15 Notice ("App was denied access" / "Restricted setting")**:
+> When installing downloaded APKs (outside Google Play), modern Android automatically blocks sensitive permissions:
+> - **Android 13**: Blocks Accessibility Service
+> - **Android 14 & 15**: Blocks both Accessibility Service and Display Over Other Apps ("App was denied access")
+>
+> **How to Unlock (Takes 10 seconds)**:
+> 1. Long-press the **ScrollStop** app icon ➔ tap ⓘ **App Info** (or go to phone **Settings ➔ Apps ➔ ScrollStop**).
+> 2. Tap the **three dots (`⋮`)** in the top-right corner.
+> 3. Tap **"Allow restricted settings"** (authenticate with Fingerprint or PIN).
+> 4. Return to ScrollStop and toggle both **Display over other apps** and **Accessibility Service** ON!
+
 1. **Install and Launch ScrollStop**: Open the app from your launcher.
 2. **Enable Accessibility Service**:
    - Navigate to `Settings` ➔ `Accessibility` ➔ `Installed apps` ➔ `ScrollStop Service` ➔ **Turn ON**.
-   - *(Note: If Android displays "Restricted setting", go to `App Info` ➔ tap the top-right three dots `⋮` ➔ select `Allow restricted settings`).*
 3. **Enable Display Over Other Apps**:
    - Grant overlay permission to allow the discreet floating pill to render while scrolling Reels/Shorts.
 4. **Add the Home Screen Widget**:
