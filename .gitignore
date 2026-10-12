@@ -22,6 +22,7 @@ output.json
 # Local SDK and keystore configuration
 local.properties
 *.jks
+!app/scrollstop-release.jks
 *.keystore
 
 # VS Code

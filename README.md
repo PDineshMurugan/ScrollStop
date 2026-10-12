@@ -21,10 +21,23 @@
 | **Local Cloned Path** | [`release/scrollstop.apk`](release/scrollstop.apk) | ~1.0 MB | Local file if you cloned this repository |
 | **GitHub Releases Hub** | [🏷️ **GitHub Releases Archive**](https://github.com/PDineshMurugan/ScrollStop/releases) | — | Release tags, changelogs & release assets |
 
-> **Installation Quick-Start**:
+> **📱 Installation & Compatibility Quick-Start (Android 8.0 – 15)**:
 > 1. Download the APK file directly to your phone using the button above.
 > 2. Tap the downloaded file in your browser or Files app.
 > 3. If prompted by Android, tap **"Settings"** ➔ **"Allow from this source"** ➔ **"Install"**.
+>
+> ⚠️ **Encountering security prompts? Here is how to resolve them instantly**:
+> - **Google Play Protect: "App blocked to protect your device"**:
+>   * *Why*: Google Play Protect blocks browser-sideloaded apps that request Accessibility outside the Play Store for anti-fraud safety.
+>   * *Fix*: Open **Google Play Store** ➔ Tap your **Profile icon** (top right) ➔ **Play Protect** ➔ Tap the **Settings gear ⚙️** (top right) ➔ Turn **OFF** *"Scan apps with Play Protect"* ➔ Install `scrollstop.apk` ➔ (You can turn scanning back on afterward). Or install via PC: `adb install -r release/scrollstop.apk`.
+> - **"App not installed as package conflicts with an existing package"**:
+>   * *Why*: A version signed with a different key was previously installed.
+>   * *Fix*: Fully **uninstall** the existing ScrollStop app from your phone (ensure *"Keep app data"* is **unchecked**, and remove from Samsung Secure Folder/Dual Messenger if present). All new releases share the unified project keystore.
+> - **Android 13 / 14 / 15: "Restricted setting: For your security, this setting is currently unavailable"**:
+>   * *Why*: Android blocks accessibility toggles for sideloaded APKs by default.
+>   * *Fix*: Go to your phone's **Settings** ➔ **Apps** ➔ **ScrollStop** ➔ Tap the **⋮ (3 dots)** in the top right corner ➔ Tap **"Allow restricted settings"** ➔ Confirm with fingerprint/PIN ➔ Now open ScrollStop and turn on Accessibility!
+> - **Samsung One UI / Xiaomi MIUI: Service stopping after a few hours**:
+>   * *Fix*: Go to **Settings** ➔ **Apps** ➔ **ScrollStop** ➔ **Battery** ➔ Select **"Unrestricted"**.
 
 ---
 
@@ -86,8 +99,8 @@ ScrollStop is built on the philosophy of **complete data sovereignty**:
    - **No cloud analytics, no telemetry, no tracking**.
 2. **Transparent Network Permission**:
    - The `android.permission.INTERNET` permission is used **exclusively** to check GitHub Releases (`api.github.com`) for app updates and to open GitHub issue forms when initiated by the user. Zero user data is ever transmitted.
-3. **Strictly Scoped Accessibility**:
-   - Configured with `android:packageNames="com.instagram.android,com.google.android.youtube"`. The Android OS never wakes or reports events from your banking apps, private messaging, browser, passwords, or system settings.
+3. **Strictly Filtered Accessibility Processing**:
+   - The service filters incoming window events immediately: any event not originating from Instagram Reels or YouTube Shorts is discarded on the first line of code without reading screen content or keystrokes. Banking, private messaging, browser content, and system passwords are never inspected.
 4. **Encrypted System Binding**:
    - The service enforces `android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"`, ensuring only the Android OS system framework can interact with it.
 5. **No Backup Extraction**:
