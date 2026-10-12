@@ -2871,6 +2871,74 @@ fun MissingPermissionsBanner(
         )
     }
 
+    var showAccessibilityDisclosure by remember { mutableStateOf(false) }
+
+    if (showAccessibilityDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showAccessibilityDisclosure = false },
+            containerColor = SurfaceCard,
+            title = {
+                Text(
+                    text = "Accessibility Service Disclosure",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "To track scrolls and enforce screen limits, ScrollStop uses the Android Accessibility Service API.",
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceDark)
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "• Detection: Identifies when Instagram Reels or YouTube Shorts are actively displayed on screen.",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "• Wellbeing Friction: Counts swipe interactions to display the HUD and alert when daily limits are met.",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "• 100% Privacy Guarantee: Operates strictly locally on your device. Never reads passwords, personal messages, banking data, or screen content.",
+                            color = AccentGreen,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showAccessibilityDisclosure = false
+                        onOpenAccessibility()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = TextPrimary, contentColor = BgOled)
+                ) {
+                    Text("Agree & Continue", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAccessibilityDisclosure = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2904,7 +2972,7 @@ fun MissingPermissionsBanner(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
                     .background(SurfaceCard)
-                    .clickable { onOpenAccessibility() }
+                    .clickable { showAccessibilityDisclosure = true }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
